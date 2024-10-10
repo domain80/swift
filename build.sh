@@ -33,16 +33,11 @@ GOOS=linux GOARCH=amd64 go  build  -ldflags="-w -s" -gcflags=all=-l -o $LINUX_DI
 GOOS=linux GOARCH=386 go  build -ldflags="-w -s" -gcflags=all=-l  -o $LINUX86_DIR main.go
 7z a -tzip $LINUX86_DIR.zip $LINUX86_DIR 
 
-# rm ./dist/linux/swift-386-linux
-# rm ./dist/linux/swift-amd64-linux
-# rm ./dist/macos/swift-amd64-darwin
-# rm ./dist/windows/swift-386.exe
-# rm ./dist/windows/swift-amd64.exe
-
-rm $WINDOWS_DIR.exe
-rm $WINDOWS86_DIR.exe
-rm $INTEL_MAC_DIR
-rm $APPLE_SILICON
-rm $LINUX_DIR
-rm $LINUX86_DIR
+##### remove executables and maintain zipped files
+# rm $WINDOWS_DIR.exe
+# rm $WINDOWS86_DIR.exe
+# rm $INTEL_MAC_DIR
+# rm $APPLE_SILICON
+# rm $LINUX_DIR
+# rm $LINUX86_DIR
 
