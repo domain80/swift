@@ -2,7 +2,9 @@ package node
 
 import (
 	"bytes"
+	"embed"
 	"fmt"
+	"io/fs"
 	"log"
 	"math/rand"
 	"net"
@@ -19,6 +21,7 @@ import (
 
 type Node struct {
 	basePort          int
+	uiDir             embed.FS
 	infoLog           *log.Logger
 	errLog            *log.Logger
 	connectionPool    map[int]net.Listener
@@ -39,7 +42,7 @@ type Intro struct {
 	ConnectedNodeIP string `json:"connectedIP"`
 }
 
-func NewNode(infoLog *log.Logger, errLog *log.Logger) *Node {
+func NewNode(infoLog *log.Logger, errLog *log.Logger, uiDir embed.FS) *Node {
 	hostname, err := os.Hostname()
 	if err != nil {
 		hostname = fmt.Sprintf("swift%d", rand.Intn(500))
@@ -47,6 +50,7 @@ func NewNode(infoLog *log.Logger, errLog *log.Logger) *Node {
 
 	return &Node{
 		basePort:       4009,
+		uiDir:          uiDir,
 		infoLog:        infoLog,
 		errLog:         errLog,
 		connectionPool: make(map[int]net.Listener),
@@ -83,8 +87,18 @@ func (n *Node) Start() {
 		r := chi.NewRouter()
 		r.Use(middleware.Logger)
 
-		r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("ui/static"))))
-		r.Handle("/*", http.FileServer(http.Dir("ui/")))
+		uiDir, err := fs.Sub(n.uiDir, "ui")
+		if err != nil {
+			n.errLog.Fatal("Unable to access uiDirectory")
+		}
+
+		uiStaticDir, err := fs.Sub(n.uiDir, "ui/static")
+		if err != nil {
+			n.errLog.Fatal("Unable to access uiDirectory")
+		}
+
+		r.Handle("/static/*", http.StripPrefix("/static/", http.FileServerFS(uiStaticDir)))
+		r.Handle("/*", http.FileServerFS(uiDir))
 		r.HandleFunc("/sender", n.handleSenderRole)
 		r.HandleFunc("/receiver", n.handleReceiverRole)
 		n.infoLog.Printf("Server started on port %d\n", port)
@@ -96,7 +110,7 @@ func (n *Node) Start() {
 func (n *Node) handleSenderRole(w http.ResponseWriter, r *http.Request) {
 	// server role assumed
 	// upgrade to websocket
-	var upgrader = websocket.Upgrader{
+	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 	}
@@ -161,7 +175,7 @@ func (n *Node) handleSenderRole(w http.ResponseWriter, r *http.Request) {
 func (n *Node) handleReceiverRole(w http.ResponseWriter, r *http.Request) {
 	// receiver role assumed
 	// upgrade to websocket
-	var upgrader = websocket.Upgrader{
+	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 	}
@@ -255,7 +269,6 @@ func (n *Node) Connect(address string) error {
 
 	// send hostname
 	return nil
-
 }
 
 func (n *Node) ReadLoop(conn interface{}) func() {
@@ -274,7 +287,6 @@ func (n *Node) ReadLoop(conn interface{}) func() {
 					n.infoLog.Println(readBytes.String())
 				}
 			}
-
 		}
 	case *websocket.Conn:
 		return func() {
@@ -287,7 +299,6 @@ func (n *Node) ReadLoop(conn interface{}) func() {
 
 				n.infoLog.Println(content)
 			}
-
 		}
 	default:
 		return nil
