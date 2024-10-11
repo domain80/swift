@@ -62,5 +62,4 @@ Download the release from the github repository,\
 unzip the file and run the executable... As simple as that 😉
 
 # 🎯 Roadmap
- - [ ] implement progress view on the UI   
- - [ ] use wifi direct for p2p communication
+ - [ ] implement progress view on the UI    
